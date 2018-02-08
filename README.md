@@ -26,7 +26,7 @@ The renderer and popup for the cluster graphics on the map, and the behaviour of
 - [10k random points FeatureSet loaded as local FeatureLayer graphics](https://esricanada-ce.github.io/clusterlayer/demo/featureset10k.html)
 - [50k random points FeatureSet loaded as local FeatureLayer graphics](https://esricanada-ce.github.io/clusterlayer/demo/featureset50k.html)
 - [50k random points FeatureSet loaded in the background](https://esricanada-ce.github.io/clusterlayer/demo/featureset50kdirect.html)
-- [1 million random coordinates loaded in the background](https://esricanada-ce.github.io/clusterlayer/demo/coords1mil.html) ***40mb!!! Takes 10-30s to index in the background***
+- [1 million random coordinates loaded in the background](https://esricanada-ce.github.io/clusterlayer/demo/coords1mil.html) ***40mb!!! Takes 10-30s to index in the background (likely exceeds memory limits on mobile devices)***
 
 # Using the ClusterLayer module:
 
