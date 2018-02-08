@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>ClusterLayer Demo</title>
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+  
+  <script>
+      var dojoConfig = {
+        packages: [{
+          name: 'lib',
+          location: location.pathname.replace(/\/[^/]+$/, '/') + '../../src'
+        }]
+      };
+  </script>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.6/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.6/"></script>
+
+  <script>
+  
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "lib/ClusterLayer",
+      "dojo/domReady!"
+    ], function(Map, MapView, ClusterLayer) {
+
+      var map = new Map({
+        basemap: "topo"
+      });
+
+      var view = new MapView({
+        container: "viewDiv",
+        map: map,
+        zoom: 5,
+        center: [-79.328942, 43.73061]
+      });
+      
+      // Toronto Police MCI dataset:
+      var clusterlayer = window.cl = new ClusterLayer({
+        url: "https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/MCI_2016/FeatureServer/0",
+        supercluster: {labelsVisible: true}
+      });
+
+      map.add(clusterlayer);
+
+    });
+    
+  </script>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+</body>
+</html>
