@@ -83,7 +83,7 @@ Add the module to your dojoConfig, and require it where appropriate in your app'
         center: [-79.328942, 43.73061]
       });
       
-      var clusterlayer = window.cl = new ClusterLayer({
+      var clusterlayer = new ClusterLayer({
         url: "https://hostname/arcgis/rest/services/example/FeatureServer/0",
         supercluster: {labelsVisible: true}
       });
