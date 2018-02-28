@@ -290,7 +290,16 @@ define([
     loadFeatures: function(where, offset) {
       
       // Initialize the ClusterWorker if it hasn't been done yet...
-      if (!this.clusterIndexReady) this.worker.postMessage({opts: this.opts.supercluster});
+      
+      // Copy the supercluster options, and omit any properties that are not 
+      // needed for the cluster worker module to work (these can potentially be
+      // be functions or objects that cannot be passed through postMessage())
+      var workerOpts = lang.mixin({}, this.opts.supercluster);
+      if (workerOpts.labelFormatter) delete workerOpts.labelFormatter;
+      if (workerOpts.popupTemplate) delete workerOpts.popupTemplate;
+      if (workerOpts.renderer) delete workerOpts.renderer;
+      if (workerOpts.fields) delete workerOpts.fields;
+      if (!this.clusterIndexReady) this.worker.postMessage({opts: workerOpts});
       
       // If this was instantiated with client-side graphics, then just load
       // the supercluster index once...
