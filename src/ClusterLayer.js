@@ -239,7 +239,7 @@ define([
       this.allViews.push(mapView);
 
       if (this.opts.labelsVisible) {
-        this.labelGraphics = new GraphicsLayer({ graphics: [] });
+        this.labelGraphics = new GraphicsLayer({ graphics: [], popupEnabled: false });
         this.view.map.add(this.labelGraphics);
       }
 
@@ -414,14 +414,17 @@ define([
             return cluster.attributes.point_count > 0;
           }
         )), lang.hitch(this, function(cluster) {
-          var c = cluster.clone();
-          c.symbol = new TextSymbol(lang.mixin(
-            {},
-            this.opts.labelSymbol,
-            {text: this.opts.labelFormatter ? this.opts.labelFormatter(
-              c.attributes[this.opts.labelField]
-            ) : c.attributes[this.opts.labelField]}
-          ));
+          var c = new Graphic({
+            geometry: cluster.geometry,
+            attributes: {},
+            symbol: new TextSymbol(lang.mixin(
+              {},
+              this.opts.labelSymbol,
+              {text: this.opts.labelFormatter ? this.opts.labelFormatter(
+                cluster.attributes[this.opts.labelField]
+              ) : cluster.attributes[this.opts.labelField]}
+            ))
+          });
           return c;
         })
       ));
