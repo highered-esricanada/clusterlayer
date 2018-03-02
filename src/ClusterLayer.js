@@ -239,7 +239,7 @@ define([
       this.allViews.push(mapView);
 
       if (this.opts.labelsVisible) {
-        this.labelGraphics = new GraphicsLayer({ graphics: [], popupEnabled: false });
+        this.labelGraphics = new GraphicsLayer({ graphics: [], popupTemplate: this.popupTemplate });
         this.view.map.add(this.labelGraphics);
       }
 
@@ -385,7 +385,16 @@ define([
     },
 
     requestClusters: function(stationary) {
-
+      
+      // Close the popup if it's showing details for a feature in this layer (or the labelGraphics layer).
+      if (this.view.popup.visible && this.view.popup.selectedFeature)
+      {
+        if (this.view.popup.selectedFeature.layer == this || this.view.popup.selectedFeature.layer == this.labelGraphics)
+        {
+          this.view.popup.visible = false;
+        }
+      }
+      
       if (!stationary) return;
 
       if (this.clusterIndexReady && this.view) {

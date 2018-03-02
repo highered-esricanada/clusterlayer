@@ -180,7 +180,7 @@ var clusterlayer = new ClusterLayer({
 ## Notes
 
 - If the same instance of a ClusterLayer is displayed in multiple map views, it will only listen to the zoom/extent for the first map view that it is added to.
-- There are some issues with popups that are open when you pan/zoom the map (maybe)
+- There are some issues with popups that are open when you pan/zoom the map (to avoid this, the layer will close the default map view's popup if it's showing details for a feature in the layer when the map starts moving)
 - Will work in a 3D SceneView, but isn't tested for it, and would (at least) require different renderer configuration
 
 ## Building from source
