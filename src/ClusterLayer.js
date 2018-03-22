@@ -425,7 +425,7 @@ define([
         )), lang.hitch(this, function(cluster) {
           var c = new Graphic({
             geometry: cluster.geometry,
-            attributes: {},
+            attributes: cluster.attributes,
             symbol: new TextSymbol(lang.mixin(
               {},
               this.opts.labelSymbol,
