@@ -50,8 +50,9 @@
       
       // Toronto Police MCI dataset:
       var clusterlayer = window.cl = new ClusterLayer({
-        url: "https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/MCI_2016/FeatureServer/0",
+        url: "https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/MCI_2014_2017/FeatureServer/0",
         outFields: ["reporteddayofweek"],
+				definitionExpression: "reporteddate BETWEEN '2016-11-01 04:59:59' AND '2017-01-01 05:00:00'",
         supercluster: {
           labelsVisible: true,
           functions: location.pathname.replace(/\/[^/]+$/, '/') + "sampleClusterFunctions.js",
