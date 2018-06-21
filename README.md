@@ -22,7 +22,7 @@ The renderer and popup for the cluster graphics on the map, and the behaviour of
 
 ## Demos:
 
-- [Points loaded directly from a feature layer](https://esricanada-ce.github.io/clusterlayer/demo/featurelayer.html) (using crime data from the Toronto Police data portal)
+- [Points loaded directly from a feature layer](https://esricanada-ce.github.io/clusterlayer/demo/featurelayer.html) (using a subset of crime data from the Toronto Police data portal)
 - [10k random points FeatureSet loaded as local FeatureLayer graphics](https://esricanada-ce.github.io/clusterlayer/demo/featureset10k.html)
 - [50k random points FeatureSet loaded as local FeatureLayer graphics](https://esricanada-ce.github.io/clusterlayer/demo/featureset50k.html)
 - [50k random points FeatureSet loaded in the background](https://esricanada-ce.github.io/clusterlayer/demo/featureset50kdirect.html)
