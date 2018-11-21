@@ -19,13 +19,13 @@
       var dojoConfig = {
         packages: [{
           name: 'lib',
-          location: location.pathname.replace(/\/[^/]+$/, '/') + '../dist'
+          location: location.pathname.replace(/\/[^/]+$/, '/') + '../../src'
         }]
       };
   </script>
 
-  <link rel="stylesheet" href="https://js.arcgis.com/4.6/esri/css/main.css">
-  <script src="https://js.arcgis.com/4.6/"></script>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.9/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.9/"></script>
 
   <script>
   
@@ -48,13 +48,11 @@
         constraints: {rotationEnabled: false}
       });
       
-      var clusterlayer = new ClusterLayer({
-        url: location.pathname.replace(/\/[^/]+$/, '/') + "sample1mil.json",
+      var clusterlayer = window.cl = new ClusterLayer({
+        source_url: location.pathname.replace(/\/[^/]+$/, '/') + "../sample1mil.json",
         direct_url: true,
         direct_type: "coords",
-        supercluster: {
-          labelsVisible: true
-        }
+        labelsVisible: true
       });
 
       map.add(clusterlayer);

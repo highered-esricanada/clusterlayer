@@ -1,7 +1,7 @@
 # ClusterLayer
 
 A custom layer that uses the [supercluster](https://github.com/mapbox/supercluster) library to perform
-fast clustering of point datasets, designed for the ArcGIS API for JavaScript 4.6.
+fast clustering of point datasets, designed for the ArcGIS API for JavaScript 4.9.
 
 ## Description
 
@@ -60,8 +60,8 @@ Add the module to your dojoConfig, and require it where appropriate in your app'
       };
   </script>
 
-  <link rel="stylesheet" href="https://js.arcgis.com/4.6/esri/css/main.css">
-  <script src="https://js.arcgis.com/4.6/"></script>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.9/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.9/"></script>
 
   <script>
   
@@ -85,7 +85,7 @@ Add the module to your dojoConfig, and require it where appropriate in your app'
       
       var clusterlayer = new ClusterLayer({
         url: "https://hostname/arcgis/rest/services/example/FeatureServer/0",
-        supercluster: {labelsVisible: true}
+        labelsVisible: true
       });
 
       map.add(clusterlayer);
@@ -108,40 +108,64 @@ Add the module to your dojoConfig, and require it where appropriate in your app'
 var clusterlayer = new ClusterLayer({
 
   // URL to a point feature layer on a FeatureServer, or 
-  // a JSON data file...
-  url: "http://hostname/sampledata.json",
+  // a JSON data file... (changed from 'url' for compatibility
+  // with version 4.9 of the ArcGIS JSAPI).
+  source_url: "http://hostname/sampledata.json",
   
   // Any other standard FeatureLayer constructor options.
   ...,
   
-  // Optional: specify outFields for any fields you expect
-  // to use in custom initial/map/reduce methods (discussed 
-  // below) - be selective to reduce the size of data 
-  // downloaded.  This only applies when the ClusterLayer is
-  // instantiated with the URL to a FeatureServer layer
-  outFields: ["objectid"],
+  // Optional: specify outFields in a source feature layer for 
+  // any fields you expect to use in custom initial/map/reduce 
+  // methods (discussed below) - be selective to reduce the 
+  // size of data downloaded.  This only applies when the 
+  // ClusterLayer is instantiated with the URL to a 
+  // FeatureServer layer
+  source_outFields: ["objectid"],
   
-  // Optional: set this true if URL above is a JSON data 
-  // file - the URL will be passed to the background worker.
+  // Optional: set this true if source URL specified above
+  // points to a JSON data file - the URL will be passed 
+  // to the background worker, where it will be downloaded
+  // directly a simple JSON request.
   direct_url: true, 
   
   // Optional: parse JSON data as Esri JSON, GeoJSON, or 
-  // simple coordinates by setting this equal to 
-  // "esri", "geojson", or "coords"
+  // a simple array of arrays (coordinates) by setting 
+  // this equal to "esri", "geojson", or "coords"
   direct_type: "esri",
+  
+  // If true, a secondary Graphics layer is added to serve 
+  // as the labels for the cluster graphics, using points 
+  // with TextSymbols (since labeling was't implemented 
+  // for 2D feature layers until recent versions of the ArcGIS
+  // JSAPI).  The new 2D labelling capability will be used
+  // by default if labelsVisible is true (and optionally a
+  // labelingInfo property may be defined to override the
+  // styling of the labels.  If using a version 4.8 of the
+  // JSAPI (or lower), use this option if you want labels
+  // instead of setting labelsVisible to true.
+  labelWithGraphics: true,
+  
+  // If labelWithGraphics is true, this can be used to
+  // override the default TextSymbol representation that 
+  // will be used to represent labels in a graphics layer:
+  labelSymbol: { ... },
+  
+  // If labelsVisible is true, then this is the field is
+  // used for the label text.  By default this will be
+  // the point_count_abbreviated attribute that is added
+  // to each cluster.
+  labelField: "point_count_abbreviated",
+  
+  // An optional method to format values for use as labels.
+  // It accepts a simple attribute value, and must return
+  // a new text value (e.g., to abbreviate large numbers)
+  labelFormatter: function(v){ return v; },
   
   supercluster: {
     // An optional URL to a JavaScript file that defines custom 
     // initial/map/reduce methods for the supercluster module
     functions: "path/to/clusterFunctions.js",
-    
-    // An optional JSON representation or instance of an
-    // ArcGIS JavaScript API Renderer object...
-    renderer: { ... },
-    
-    // An optional JSON representation or instance of an
-    // ArcGIS JavaScript API PopupTemplate object
-    popupTemplate: { ... },
     
     // An optional list of JSON representations or instances 
     // of ArcGIS JavaScript API Field objects - these should 
@@ -149,23 +173,6 @@ var clusterlayer = new ClusterLayer({
     // supply custom initial/map/reduce methods (see the 
     // functions option above).
     fields: [{...}, ...],
-    
-    // If true, a secondary Graphics layer is added to serve 
-    // as the labels for the cluster graphics, using points 
-    // with TextSymbols (since labeling isn't yet implemented 
-    // for 2D feature layers in the JavaScript 4.6 API)
-    labelsVisible: true,
-    
-    // If labelsVisible is true, then this is the field 
-    // used for the label text,
-    labelField: "fieldname",
-    
-    // An optional method to format values for use as labels,
-    labelFormatter: function(v){ return v; },
-    
-    // An optional JSON representation or instance of a 
-    // [TextSymbol]() object that will be used for labels,
-    labelSymbol: { ... },
     
     // Any other parameters respected by supercluster, 
     // ***EXCEPT*** for initial/map/reduce functions 
@@ -181,7 +188,7 @@ var clusterlayer = new ClusterLayer({
 
 - If the same instance of a ClusterLayer is displayed in multiple map views, it will only listen to the zoom/extent for the first map view that it is added to.
 - There are some issues with popups that are open when you pan/zoom the map (to avoid this, the layer will close the default map view's popup if it's showing details for a feature in the layer when the map starts moving)
-- Will work in a 3D SceneView, but isn't tested for it, and would (at least) require different renderer configuration
+- Might work in a 3D SceneView, but isn't tested for it, and would (at least) require different renderer configuration.
 
 ## Building from source
 
