@@ -187,7 +187,7 @@ define([
           this.featureLayerOpts.definitionExpression = val;
         else if (prop == "source_outFields")
           this.featureLayerOpts.outFields = val;
-        else if (prop != "supercluster" && prop != "source")
+        else if (prop != "supercluster" && prop != "source" && prop != "popupTemplate" && prop != "renderer")
           this.featureLayerOpts[prop] = val;
       }
       

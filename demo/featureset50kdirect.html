@@ -32,9 +32,10 @@
     require([
       "esri/Map",
       "esri/views/MapView",
+      "esri/widgets/Legend",
       "lib/ClusterLayer",
       "dojo/domReady!"
-    ], function(Map, MapView, ClusterLayer) {
+    ], function(Map, MapView, Legend, ClusterLayer) {
 
       var map = new Map({
         basemap: "topo"
@@ -56,9 +57,16 @@
       });
 
       map.add(clusterlayer);
-      window.clusterlayer = clusterlayer;
       
-      window.map = map;
+      var legend = new Legend({
+        view: view,
+        layerInfos: [{
+          layer: clusterlayer,
+          title: "Legend"
+        }]
+      });
+
+      view.ui.add(legend, "bottom-right");
     });
     
   </script>
