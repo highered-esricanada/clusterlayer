@@ -50,7 +50,7 @@
       });
       
       // Toronto Police MCI dataset:
-      var clusterlayer = window.cl = new ClusterLayer({
+      var clusterlayer = new ClusterLayer({
         supercluster: {
           functions: location.pathname.replace(/\/[^/]+$/, '/') + "../sampleClusterFunctions.js",
           fields: [{
@@ -151,7 +151,6 @@
       view.ui.add(legend, "bottom-right");
 
       map.add(clusterlayer);
-
     });
     
   </script>
