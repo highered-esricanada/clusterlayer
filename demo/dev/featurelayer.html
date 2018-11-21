@@ -24,17 +24,18 @@
       };
   </script>
 
-  <link rel="stylesheet" href="https://js.arcgis.com/4.6/esri/css/main.css">
-  <script src="https://js.arcgis.com/4.6/"></script>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.9/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.9/"></script>
 
   <script>
   
     require([
       "esri/Map",
       "esri/views/MapView",
+      "esri/widgets/Legend",
       "lib/ClusterLayer",
       "dojo/domReady!"
-    ], function(Map, MapView, ClusterLayer) {
+    ], function(Map, MapView, Legend, ClusterLayer) {
 
       var map = new Map({
         basemap: "topo"
@@ -50,10 +51,104 @@
       
       // Toronto Police MCI dataset:
       var clusterlayer = window.cl = new ClusterLayer({
-        url: "https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/MCI_2014_2017/FeatureServer/0",
-        supercluster: {labelsVisible: true},
-				definitionExpression: "reporteddate BETWEEN '2016-11-01 04:59:59' AND '2017-01-01 05:00:00'"
+        supercluster: {
+          functions: location.pathname.replace(/\/[^/]+$/, '/') + "../sampleClusterFunctions.js",
+          fields: [{
+            name: "total",
+            alias: "Total Crimes",
+            type: "long"
+          }, {
+            name: "weekend",
+            alias: "Weekend Crimes",
+            type: "long"
+          }, {
+            name: "weekday",
+            alias: "Weekday Crimes",
+            type: "long"
+          }, {
+            name: "ratio",
+            alias: "Weekend/Weekday ratio",
+            type: "double"
+          }]
+        },
+        source_url: "https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/MCI_2014_2017/FeatureServer/0",
+				source_definitionExpression: "reporteddate BETWEEN '2016-11-01 04:59:59' AND '2017-01-01 05:00:00'",
+        source_outFields: ["reporteddayofweek"],
+        labelsVisible: true,
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-marker",
+            style: "circle",
+            size: 10,
+            color: [255, 255, 255, 0.6],
+            outline: {
+              width: 1.5,
+              color: "blue",
+              style: "solid"
+            }
+          },
+          visualVariables: [{
+            type: "size",
+            field: "total",
+            minDataValue: 3,
+            maxDataValue: 1000,
+            // minimum size to render minDataVal at specified view scales
+            minSize: {
+              type: "size",
+              valueExpression: "$view.scale",
+              stops: [
+                { value: 1128,      size: "20px" },
+                { value: 591657528, size: "12px" }
+              ]
+            },
+            // maximum size to render maxDataVal at specified view scales
+            maxSize: {
+              type: "size",
+              valueExpression: "$view.scale",
+              stops: [
+                { value: 1128,      size: "60px" },
+                { value: 288895,    size: "50px" },
+                { value: 73957191,  size: "40px" },
+                { value: 591657528, size: "12px" }
+              ]
+            }
+          }]
+        },
+        popupTemplate: {
+          title: "Crime Stats",
+          content: [{
+            type: "fields",
+            fieldInfos: [{
+              fieldName: "total",
+              label: "Total Crimes",
+              visible: true
+            }, {
+              fieldName: "weekend",
+              label: "Weekend Crimes",
+              visible: true
+            }, {
+              fieldName: "weekday",
+              label: "Weekday Crimes",
+              visible: true
+            }, {
+              fieldName: "ratio",
+              label: "Weekend/Weekday Ratio",
+              visible: true
+            }]
+          }]
+        }
       });
+      
+      var legend = new Legend({
+        view: view,
+        layerInfos: [{
+          layer: clusterlayer,
+          title: "Legend"
+        }]
+      });
+
+      view.ui.add(legend, "bottom-right");
 
       map.add(clusterlayer);
 

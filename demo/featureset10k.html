@@ -19,13 +19,13 @@
       var dojoConfig = {
         packages: [{
           name: 'lib',
-          location: location.pathname.replace(/\/[^/]+$/, '/') + '../dist'
+          location: location.pathname.replace(/\/[^/]+$/, '/') + '../src'
         }]
       };
   </script>
 
-  <link rel="stylesheet" href="https://js.arcgis.com/4.6/esri/css/main.css">
-  <script src="https://js.arcgis.com/4.6/"></script>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.9/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.9/"></script>
 
   <script>
   
@@ -50,11 +50,9 @@
       });
       
       xhr("sample10k.json", {handleAs: "json"}).then(function(featureSet){
-        var clusterlayer = new ClusterLayer({
+        var clusterlayer = window.cl = new ClusterLayer({
           source: featureSet.features,
-          supercluster: {
-            labelsVisible: true
-          }
+          labelsVisible: true
         });
 
         map.add(clusterlayer);
