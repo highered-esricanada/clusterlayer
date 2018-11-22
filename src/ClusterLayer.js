@@ -146,112 +146,114 @@ define([
     },
     
     constructor: function(opts){
-
-      this.opts = opts;
-      this.featureLayerOpts = {};
       
-      this.worker = new Worker(require.toUrl("./ClusterWorker.js"));
-      this.worker.onmessage = lang.hitch(this, function(e) {
+      var $this = this;
+      
+      $this.opts = opts;
+      $this.featureLayerOpts = {};
+      
+      $this.worker = new Worker(require.toUrl("./ClusterWorker.js"));
+      $this.worker.onmessage = function(e) {
         if (e.data.workerReady) {
           // message received when the worker has loaded, but needs
           // a url to a script with the supercluster module.
-          this.worker.postMessage({
+          $this.worker.postMessage({
             supercluster: require.toUrl("./") + "../node_modules/supercluster/dist/supercluster.js"
           });
         } else if (e.data.superclusterReady) {
           // The supercluster module is now loaded in the worker.
-          this.clusterWorkerReady = true;
+          $this.clusterWorkerReady = true;
           // If the layer is already added to a map view, then  
           // call the initClusterLayer() method to get things started.
-          if (this.view) this.initClusterLayer();
+          if ($this.view) $this.initClusterLayer();
         } else if (e.data.indexReady) {
           // When the supercluster index is finished being 
           // prepared by the worker, we can start drawing the
           // clusters on the map.
-          this.clusterIndexReady = true;
-          this.requestClusters(true);
+          $this.clusterIndexReady = true;
+          $this.requestClusters(true);
         } else {
           // This will be a message from the worker containing
           // clusters for the current zoom & extent.
-          this.displayClusters(e.data);
+          $this.displayClusters(e.data);
         }
-      });
+      };
       
 
-      for (var prop in this.opts)
+      for (var prop in $this.opts)
       {
-        var val = this.opts[prop];
+        var val = $this.opts[prop];
         if (prop == "source_url")
-          this.featureLayerOpts.url = val;
+          $this.featureLayerOpts.url = val;
         else if (prop == "source_definitionExpression")
-          this.featureLayerOpts.definitionExpression = val;
+          $this.featureLayerOpts.definitionExpression = val;
         else if (prop == "source_outFields")
-          this.featureLayerOpts.outFields = val;
+          $this.featureLayerOpts.outFields = val;
         else if (prop != "supercluster" && prop != "source" && prop != "popupTemplate" && prop != "renderer")
-          this.featureLayerOpts[prop] = val;
+          $this.featureLayerOpts[prop] = val;
       }
       
-      if (!this.opts.supercluster)
-        this.opts.supercluster = {};
+      if (!$this.opts.supercluster)
+        $this.opts.supercluster = {};
       
       // This will store client-side features from the source feature layer:
-      this.currentFeatures = [];
+      $this.currentFeatures = [];
 
       // This will store the graphics currently displayed in the main map view:
-      this.currentClusters = [];
+      $this.currentClusters = [];
       
       // Keep track of views that the map is displayed in.
-      this.view = null;
-      this.allViews = [];
+      $this.view = null;
+      $this.allViews = [];
 
       // For convenience later on, this will make it easy to distinguish
       // between client-side cluster attributes, and attributes associated with
       // the underlying feature service ...
-      this.clusterFieldNames = array.map(clusterFields, function(field) {
+      $this.clusterFieldNames = array.map(clusterFields, function(field) {
         return field.name;
       });
 
       // Any supercluster fields provided will be appended to the default
       // clusterFields.  They should be matched by any properties that are
       // defined/calculated by the supercluster initialize/map/reduce methods:
-      var fields = this.opts.supercluster.fields || [];
-      this.opts.fields = clusterFields.concat(array.filter(
+      var fields = $this.opts.supercluster.fields || [];
+      $this.opts.fields = clusterFields.concat(array.filter(
         fields,
-        lang.hitch(this, function(field){
-          return this.clusterFieldNames.indexOf(field.name) == -1;
-        }))
-      );
+        function(field){
+          return $this.clusterFieldNames.indexOf(field.name) == -1;
+        }
+      ));
 
       // If no supercluster popup template is provided, use a default template...
-      if (!this.opts.popupTemplate) this.opts.popupTemplate = clusterPopupTemplate;
+      if (!$this.opts.popupTemplate) $this.opts.popupTemplate = clusterPopupTemplate;
       
-      if (this.opts.labelWithGraphics) this.opts.labelsVisible = false;
+      if ($this.opts.labelWithGraphics) $this.opts.labelsVisible = false;
       
       
-      if (this.opts.labelsVisible && !this.opts.labelingInfo)
-        this.opts.labelingInfo = clusterLabelingInfo;
-      if (this.opts.labelsVisible && !this.opts.labelingInfo)
-        this.opts.labelingInfo = clusterLabelingInfo;
-      if (this.opts.labelWithGraphics && !this.opts.labelSymbol)
-        this.opts.labelSymbol = clusterLabelSymbol;
-      if ((this.opts.labelsVisible || this.opts.labelWithGraphics) && !this.opts.labelField)
-        this.opts.labelField = "point_count_abbreviated";
+      if ($this.opts.labelsVisible && !$this.opts.labelingInfo)
+        $this.opts.labelingInfo = clusterLabelingInfo;
+      if ($this.opts.labelsVisible && !$this.opts.labelingInfo)
+        $this.opts.labelingInfo = clusterLabelingInfo;
+      if ($this.opts.labelWithGraphics && !$this.opts.labelSymbol)
+        $this.opts.labelSymbol = clusterLabelSymbol;
+      if (($this.opts.labelsVisible || $this.opts.labelWithGraphics) && !$this.opts.labelField)
+        $this.opts.labelField = "point_count_abbreviated";
 
       // Renderer can be anything, but should define appropriate symbols based
       // on point_count, or any other attribute calculated by the SuperCluster
       // reduce() method.  Must be part of the supercluster parameters...
-      if (!this.opts.renderer) this.opts.renderer = clusterRenderer;
+      if (!$this.opts.renderer) $this.opts.renderer = clusterRenderer;
 
-      this.opts.geometryType = "point";
-      this.opts.spatialReference = { wkid: 4326 };
-      this.opts.objectIdField = "objectid";
+      $this.opts.geometryType = "point";
+      $this.opts.spatialReference = { wkid: 4326 };
+      $this.opts.objectIdField = "objectid";
       
       // Stash local graphics if they are provided directly in the constructor options:
-      if (this.opts.source) this.opts.source_features = this.opts.source;
+      if ($this.opts.source) $this.opts.source_features = $this.opts.source;
       
-      this.opts.source = [];
+      $this.opts.source = [];
 
-      return this.inherited(arguments);
+      return $this.inherited(arguments);
     },
 
     // The zoom level and extent used to define clustering will be based on the
@@ -293,54 +295,58 @@ define([
     
     watchView: function(mapView)
     {
-      if (this.stationaryWatch) this.stationaryWatch.remove();
-      if (this.scaleWatch) this.scaleWatch.remove();
+      var $this = this;
+      if ($this.stationaryWatch) $this.stationaryWatch.remove();
+      if ($this.scaleWatch) $this.scaleWatch.remove();
       if (!mapView) return;
-      this.stationaryWatch = this.view.watch("stationary", lang.hitch(this, this.requestClusters));
-      this.scaleWatch = this.view.watch("scale", lang.hitch(this, function(){ 
-        if (this.labelGraphics) this.labelGraphics.opacity = 0;
-      }));
+      $this.stationaryWatch = $this.view.watch("stationary", function(stationary){ $this.requestClusters(stationary); });
+      $this.scaleWatch = $this.view.watch("scale", function(){ 
+        if ($this.labelGraphics) $this.labelGraphics.opacity = 0;
+      });
     },
 
     initClusterLayer: function(e){
-      if (this.featureLayerOpts.url && !this.featureLayerOpts.direct_url)
+      var $this = this;
+      if ($this.featureLayerOpts.url && !$this.featureLayerOpts.direct_url)
       {
-        this.source_layer = new FeatureLayer(this.featureLayerOpts);
-        this.source_layer.load().then(lang.hitch(this, function(){
-          this.source_definitionExpression = this.source_layer.definitionExpression;
-          this.watch("source_definitionExpression", function(newExp, oldExp) {
-            this.source_layer.definitionExpression = newExp;
-            this.loadFeatures();
+        $this.source_layer = new FeatureLayer($this.featureLayerOpts);
+        $this.source_layer.load().then(function(){
+          $this.source_definitionExpression = $this.source_layer.definitionExpression;
+          $this.watch("source_definitionExpression", function(newExp, oldExp) {
+            $this.source_layer.definitionExpression = newExp;
+            $this.loadFeatures();
           });
 
-          this.loadFeatures();
-        }), function(e) {
+          $this.loadFeatures();
+        }, function(e) {
           console.log("Error: ", e);
         });
       } else {
-        this.loadFeatures();
+        $this.loadFeatures();
       }
     },
 
     loadFeatures: function(where, offset) {
+      
+      var $this = this;
       
       // Initialize the ClusterWorker if it hasn't been done yet...
       
       // Copy the supercluster options, remove the fields property (in 
       // case these have been defined as actual objects instead of simple
       // JSON data).
-      var workerOpts = lang.mixin({}, this.opts.supercluster);
+      var workerOpts = lang.mixin({}, $this.opts.supercluster);
       if (workerOpts.fields) delete workerOpts.fields;
-      if (!this.clusterIndexReady) this.worker.postMessage({opts: workerOpts});
+      if (!$this.clusterIndexReady) $this.worker.postMessage({opts: workerOpts});
       
-      // If this was instantiated with client-side graphics, then just load
+      // If $this was instantiated with client-side graphics, then just load
       // the supercluster index once...
-      if (this.opts.source_features)
+      if ($this.opts.source_features)
       {
-        if (this.currentFeatures.length > 0) return;
+        if ($this.currentFeatures.length > 0) return;
 
-        this.worker.postMessage({
-          features: this.opts.source_features,
+        $this.worker.postMessage({
+          features: $this.opts.source_features,
           type: "esri",
           load: true
         });
@@ -350,17 +356,17 @@ define([
       
       // If this was instantiated with url, and direct_url==true, then pass the URL to
       // the ClusterWorker, and let it load the URL as a raw JSON source...
-      if (this.opts.source_url && this.featureLayerOpts.direct_url)
+      if ($this.opts.source_url && $this.featureLayerOpts.direct_url)
       {
-        if (this.currentFeatures.length > 0) return;
+        if ($this.currentFeatures.length > 0) return;
         
         // The direct_type can specify "esri" for an Esri FeatureSet JSON 
         // representation, "coords" for an array of
         // raw lon/lat pairs, or "geojson"...
-        this.worker.postMessage({
-          url: this.opts.source_url,
+        $this.worker.postMessage({
+          url: $this.opts.source_url,
           load: true,
-          type: this.featureLayerOpts.direct_type || "geojson"
+          type: $this.featureLayerOpts.direct_type || "geojson"
         });
 
         return;
@@ -370,27 +376,24 @@ define([
       // should point to a layer in a FeatureServer.
       
       // Setup default parameters, and start querying the layer for features:
-      where = where || this.source_layer.definitionExpression || "1=1";
+      where = where || $this.source_layer.definitionExpression || "1=1";
       offset = offset || 0;
 
       // If this is a new query, then initialize a new geojson features object
-      if (offset == 0) this.currentFeatures = [];
+      if (offset == 0) $this.currentFeatures = [];
 
       // Get appropriate outFields to ask for when querying the underlying
       // feature layer...this must exclude the clusterFieldNames (which are
       // generated locally by the supercluster module)...
-      var outFields = array.filter(this.source_layer.outFields, lang.hitch(
-        this,
-        function(fieldname){
-          return this.clusterFieldNames.indexOf(fieldname) == -1;
-        })
-      );
+      var outFields = array.filter($this.source_layer.outFields, function(fieldname){
+        return $this.clusterFieldNames.indexOf(fieldname) == -1;
+      });
 
-      if (outFields.length == 0) outFields = [this.source_layer.objectIdField];
+      if (outFields.length == 0) outFields = [$this.source_layer.objectIdField];
 
       // Define the query parameters...
       var query = new Query({
-        num: this.source_layer.maxRecordCount || 1000,
+        num: $this.source_layer.maxRecordCount || 1000,
         start: offset,
         where: where,
         outFields: outFields,
@@ -399,10 +402,10 @@ define([
       });
 
       // Define a method in scope that will handle the query response...
-      var handleQueryResponse = lang.hitch(this, function(results){
+      var handleQueryResponse = function(results){
 
         // Pass features to the cluster worker (as plain JSON).
-        this.worker.postMessage({
+        $this.worker.postMessage({
           features: results.features.map(esriObjectToJSON), 
           type: "esri", 
           load: !results.exceededTransferLimit
@@ -411,51 +414,57 @@ define([
         // Keep querying for more...
         if (results.exceededTransferLimit) {
           query.start += results.features.length;
-          this.source_layer.queryFeatures(query).then(handleQueryResponse);
+          $this.source_layer.queryFeatures(query).then(handleQueryResponse);
         }
-      });
+      };
 
       // Start querying the underlying layer for features...
-      this.source_layer.queryFeatures(query).then(handleQueryResponse);
+      $this.source_layer.queryFeatures(query).then(handleQueryResponse);
     },
 
     requestClusters: function(stationary) {
       
+      var $this = this;
+      
       // Close the popup if it's showing details for a feature in this layer (or the labelGraphics layer).
-      if (this.view.popup.visible && this.view.popup.selectedFeature)
+      if ($this.view.popup.visible && $this.view.popup.selectedFeature)
       {
-        if (this.view.popup.selectedFeature.layer == this || this.view.popup.selectedFeature.layer == this.labelGraphics)
+        if ($this.view.popup.selectedFeature.layer == $this || $this.view.popup.selectedFeature.layer == $this.labelGraphics)
         {
-          this.view.popup.visible = false;
+          $this.view.popup.visible = false;
         }
       }
       
       if (!stationary) return;
 
-      if (this.clusterIndexReady && this.view) {
+      if ($this.clusterIndexReady && $this.view) {
 
-        var zoom = parseInt(Math.round(this.view.zoom));
+        var zoom = parseInt(Math.round($this.view.zoom));
 
         var extent = webMercatorUtils.webMercatorToGeographic(
-          zoom < 5 ? this.view.map.basemap.baseLayers.items[0].fullExtent
-            : this.view.extent
+          zoom < 5 ? $this.view.map.basemap.baseLayers.items[0].fullExtent : $this.view.extent
         );
         
-        this.worker.postMessage({bbox: [extent.xmin, extent.ymin, extent.xmax, extent.ymax], zoom: zoom});
+        $this.worker.postMessage({bbox: [extent.xmin, extent.ymin, extent.xmax, extent.ymax], zoom: zoom});
       }
     },
     
     displayClusters: function(clusters) {
+      
+      var $this = this;
+      
       // Delete currently-displayed graphics:
-      if (this.labelGraphics) {
-        this.labelGraphics.removeAll();
+      if ($this.labelGraphics) {
+        $this.labelGraphics.removeAll();
       }
       // As-of JSAPI 4.9, featurelayer-like object must have its graphics controlled
       // via the applyEdits method, even if it is being drawn from client-side graphics:
-      if (this.currentClusterOIDs) this.applyEdits({deleteFeatures: this.currentClusterOIDs});
+      $this.applyEdits({deleteFeatures: $this.currentClusterOIDs || []}).then(function(edits){
+        console.log(edits);
+      });
       
       // Get clusters for the current zoom level:
-      this.currentClusters = array.map(clusters, lang.hitch(this, function(clusterGeoJson) {
+      $this.currentClusters = array.map(clusters, function(clusterGeoJson) {
         var cluster = graphicFromGeoJson(clusterGeoJson);
         
         // Ensure that the point_count_abbreviated attribute is always a string value, or it won't be
@@ -463,50 +472,52 @@ define([
         if (cluster.attributes.point_count_abbreviated) 
           cluster.attributes.point_count_abbreviated = cluster.attributes.point_count_abbreviated.toString();
         
-        if (this.opts.labelFormatter)
-          cluster.attributes[this.opts.labelField] = this.opts.labelFormatter(
-            cluster.attributes[this.opts.labelField]
-          ) || cluster.attributes[this.opts.labelField];
+        if ($this.opts.labelFormatter)
+          cluster.attributes[$this.opts.labelField] = $this.opts.labelFormatter(
+            cluster.attributes[$this.opts.labelField]
+          ) || cluster.attributes[$this.opts.labelField];
         
         return cluster;
-      }));
+      });
       
       // Add the new cluster graphic to the clusterlayer via applyEdits, and keep a
       // a record of the auto-genereated OIDs:
-      this.applyEdits({addFeatures: this.currentClusters}).then(lang.hitch(this, function(edits){
-        this.currentClusterOIDs = array.map(edits.addFeatureResults, function(add){
+      $this.applyEdits({addFeatures: $this.currentClusters}).then(function(edits){
+        $this.currentClusterOIDs = array.map(edits.addFeatureResults, function(add){
           return {objectId: add.objectId};
         });
-      }), lang.hitch(this,function(error){
+        $this.addLabelGraphics();
+      }, function(error){
         // JSAPI versions < 4.9 do not support applyEdits on local graphics layers
-        this.source.removeAll()
-        this.source.addMany(this.currentClusters);
-      }));
+        $this.source.removeAll()
+        $this.source.addMany($this.currentClusters);
+        $this.addLabelGraphics();
+      });
+    },
+    
+    addLabelGraphics: function() {
+      var $this = this;
       
       // Add any label graphics if enabled:
-      if (this.labelGraphics) { 
-        this.labelGraphics.addMany(array.map(
-          array.filter(this.currentClusters, lang.hitch(
-            this,
-            function (cluster) {
-              return cluster.attributes.point_count > 0;
-            }
-          )), lang.hitch(this, function(cluster) {
+      if ($this.labelGraphics) { 
+        $this.labelGraphics.addMany(array.map(
+          array.filter($this.currentClusters, function (cluster) {
+            return cluster.attributes.point_count > 0;
+          }), function(cluster) {
             var c = new Graphic({
               geometry: cluster.geometry,
               attributes: cluster.attributes,
               symbol: new TextSymbol(lang.mixin(
                 {},
-                this.opts.labelSymbol,
-                {text: cluster.attributes[this.opts.labelField]}
+                $this.opts.labelSymbol,
+                {text: cluster.attributes[$this.opts.labelField]}
               ))
             });
             return c;
-          })
+          }
         ));
-        
-        setTimeout(lang.hitch(this, function(){this.labelGraphics.opacity = 1;}), this.has_loaded?200:500);
-        this.has_loaded = true;
+        setTimeout(function(){$this.labelGraphics.opacity = 1;}, $this.has_loaded?200:500);
+        $this.has_loaded = true;
       }
     }
   });
@@ -533,5 +544,4 @@ define([
       console.log('Error converting GeoJSON to Graphic:', e);
     }
   }
-
 });
