@@ -6,10 +6,13 @@ define([
   "esri/tasks/support/Query",
   "esri/Graphic",
   "esri/geometry/support/webMercatorUtils",
+  "esri/kernel",
   "dojo/_base/declare",
   "dojo/_base/lang",
   "dojo/_base/array",
+  "dojo/Deferred",
   "dojo/on",
+  "dojo/has",
   "require"
 ], function(
   GraphicsLayer,
@@ -19,13 +22,19 @@ define([
   Query,
   Graphic,
   webMercatorUtils,
+  esriNS,
   declare,
   lang,
   array,
+  Deferred,
   on,
+  has,
   require
 ){
-
+  
+  var esriVersion = parseFloat(esriNS.version);
+  var isWebGL = has('esri-featurelayer-webgl')==1;
+  
   var clusterRenderer = {
     type: "simple",
     symbol: {
@@ -227,6 +236,7 @@ define([
       // If no supercluster popup template is provided, use a default template...
       if (!$this.opts.popupTemplate) $this.opts.popupTemplate = clusterPopupTemplate;
       
+      if ($this.opts.labelsVisible && esriVersion >= 4.9 && !isWebGL) $this.opts.labelWithGraphics = true;
       if ($this.opts.labelWithGraphics) $this.opts.labelsVisible = false;
       
       
@@ -234,7 +244,7 @@ define([
         $this.opts.labelingInfo = clusterLabelingInfo;
       if ($this.opts.labelsVisible && !$this.opts.labelingInfo)
         $this.opts.labelingInfo = clusterLabelingInfo;
-      if ($this.opts.labelWithGraphics && !$this.opts.labelSymbol)
+      if (($this.opts.labelsVisible || $this.opts.labelWithGraphics) && !$this.opts.labelSymbol)
         $this.opts.labelSymbol = clusterLabelSymbol;
       if (($this.opts.labelsVisible || $this.opts.labelWithGraphics) && !$this.opts.labelField)
         $this.opts.labelField = "point_count_abbreviated";
@@ -263,9 +273,7 @@ define([
       this.allViews.push(mapView);
 
       if (this.opts.labelWithGraphics) {
-        this.labelGraphics = new GraphicsLayer({ graphics: [], popupTemplate: this.popupTemplate });
-        this.view.map.add(this.labelGraphics);
-        this.labelGraphics.opacity = 0;
+        this.enableLabelGraphics();
       }
       
       this.watchView(this.view);
@@ -277,7 +285,7 @@ define([
 
       return this.inherited(arguments);
     },
-
+    
     // If the layer is removed from a view, switch to the next view (if the
     // layer has been added to more than one), or set this.view = null
     destroyLayerView: function(mapView) {
@@ -293,15 +301,22 @@ define([
       return this.inherited(arguments);
     },
     
+    enableLabelGraphics: function() {
+      this.labelWithGraphics = true;
+      this.labelGraphics = new GraphicsLayer({ graphics: [], popupTemplate: this.popupTemplate });
+      this.view.map.add(this.labelGraphics);
+      if (isWebGL) this.labelGraphics.opacity = 0;
+    },
+    
     watchView: function(mapView)
     {
       var $this = this;
       if ($this.stationaryWatch) $this.stationaryWatch.remove();
       if ($this.scaleWatch) $this.scaleWatch.remove();
       if (!mapView) return;
-      $this.stationaryWatch = $this.view.watch("stationary", function(stationary){ $this.requestClusters(stationary); });
+      $this.stationaryWatch = $this.view.watch("stationary", function(stationary){ $this.refreshClusters(stationary); });
       $this.scaleWatch = $this.view.watch("scale", function(){ 
-        if ($this.labelGraphics) $this.labelGraphics.opacity = 0;
+        if ($this.labelGraphics && isWebGL) $this.labelGraphics.opacity = 0;
       });
     },
 
@@ -422,21 +437,9 @@ define([
       $this.source_layer.queryFeatures(query).then(handleQueryResponse);
     },
 
-    requestClusters: function(stationary) {
-      
+    requestClusters: function() {
       var $this = this;
       
-      // Close the popup if it's showing details for a feature in this layer (or the labelGraphics layer).
-      if ($this.view.popup.visible && $this.view.popup.selectedFeature)
-      {
-        if ($this.view.popup.selectedFeature.layer == $this || $this.view.popup.selectedFeature.layer == $this.labelGraphics)
-        {
-          $this.view.popup.visible = false;
-        }
-      }
-      
-      if (!stationary) return;
-
       if ($this.clusterIndexReady && $this.view) {
 
         var zoom = parseInt(Math.round($this.view.zoom));
@@ -449,21 +452,74 @@ define([
       }
     },
     
+    refreshClusters: function(stationary) {
+      var $this = this;
+      
+      // Close the popup if it's showing details for a feature in this layer (or the labelGraphics layer).
+      if ($this.view.popup.visible && $this.view.popup.selectedFeature)
+      {
+        if ($this.view.popup.selectedFeature.layer == $this || $this.view.popup.selectedFeature.layer == $this.labelGraphics)
+        {
+          $this.view.popup.visible = false;
+        }
+      }
+      
+      if (!stationary) return;
+      
+      // Only start refreshing the graphics if there isn't already a deferred promise.
+      if (!$this.refresh_deferred) $this.clearClusters().then(function(){
+        $this.refresh_deferred = false;
+      });
+    },
+    
+    clearClusters: function() {
+      
+      var $this = this;
+      
+      $this.refresh_deferred = new Deferred();
+      
+      if ($this.labelGraphics) {
+        $this.labelGraphics.removeAll();
+      }
+      
+      if (isWebGL && esriVersion >= 4.9) {
+        // As-of JSAPI 4.9, featurelayer-like object must have its graphics controlled
+        // via the applyEdits method, even if it is being drawn from client-side graphics:
+        $this.queryFeatures().then(function(result){
+          var delete_ids = array.map(result.features, function(f){
+            return {objectId: f.attributes.objectid};
+          });
+          
+          if (delete_ids.length > 0) $this.applyEdits({deleteFeatures: delete_ids}).then(function(){
+            $this.requestClusters();
+          })
+          else $this.requestClusters();
+          
+        }, function(){
+          clearFromSource();
+        });
+      } else {
+        clearFromSource();
+      }
+      
+      function clearFromSource() {
+        // JSAPI versions < 4.9 or 4.9 with WebGL disabled do not support applyEdits on local graphics layers
+        $this.source.removeAll();
+        
+        // Labels also won't work in < 4.9
+        if ($this.labelsVisible && $this.labelWithGraphics !== false)
+          $this.enableLabelGraphics();
+      
+        $this.requestClusters();
+      }
+      
+      return $this.refresh_deferred.promise;
+    },
+    
     displayClusters: function(clusters) {
       
       var $this = this;
       
-      // Delete currently-displayed graphics:
-      if ($this.labelGraphics) {
-        $this.labelGraphics.removeAll();
-      }
-      // As-of JSAPI 4.9, featurelayer-like object must have its graphics controlled
-      // via the applyEdits method, even if it is being drawn from client-side graphics:
-      $this.applyEdits({deleteFeatures: $this.currentClusterOIDs || []}).then(function(edits){
-        console.log(edits);
-      });
-      
-      // Get clusters for the current zoom level:
       $this.currentClusters = array.map(clusters, function(clusterGeoJson) {
         var cluster = graphicFromGeoJson(clusterGeoJson);
         
@@ -480,19 +536,23 @@ define([
         return cluster;
       });
       
-      // Add the new cluster graphic to the clusterlayer via applyEdits, and keep a
-      // a record of the auto-genereated OIDs:
-      $this.applyEdits({addFeatures: $this.currentClusters}).then(function(edits){
-        $this.currentClusterOIDs = array.map(edits.addFeatureResults, function(add){
-          return {objectId: add.objectId};
+      if (isWebGL && esriVersion >= 4.9) {
+        $this.applyEdits({addFeatures: $this.currentClusters}).then(function(edits){
+          $this.addLabelGraphics();
+          if ($this.refresh_deferred) $this.refresh_deferred.resolve();
+        }, function(){
+          addToSource();
         });
-        $this.addLabelGraphics();
-      }, function(error){
-        // JSAPI versions < 4.9 do not support applyEdits on local graphics layers
-        $this.source.removeAll()
+      } else {
+        addToSource();
+      }
+      
+      function addToSource() {
+        // JSAPI versions < 4.9 or 4.9 with WebGL disabled do not support applyEdits on local graphics layers
         $this.source.addMany($this.currentClusters);
         $this.addLabelGraphics();
-      });
+        if ($this.refresh_deferred) $this.refresh_deferred.resolve();
+      }
     },
     
     addLabelGraphics: function() {
@@ -516,7 +576,18 @@ define([
             return c;
           }
         ));
-        setTimeout(function(){$this.labelGraphics.opacity = 1;}, $this.has_loaded?200:500);
+        
+        // Since 4.9's switch to using WebGL drawing by default, there is a bit of lag 
+        // when the cluster icons updated using applyEdits() are displayed on the map
+        // relative to when label graphics appear after they are updated using the 
+        // removeAll() and addMany() methods.  This timeout is added as a bit of
+        // a hack to prevent the visual appearance of labels being drawn slightly before
+        // the symobols for the points they represent...instead, they (usually) will
+        // appear slightly after, which is somewhat less distracting.
+        if (isWebGL) setTimeout(function(){
+          $this.labelGraphics.opacity = 1;
+        }, $this.has_loaded?300:500);
+        
         $this.has_loaded = true;
       }
     }
