@@ -10,7 +10,6 @@ define([
   "dojo/_base/declare",
   "dojo/_base/lang",
   "dojo/_base/array",
-  "dojo/Deferred",
   "dojo/on",
   "dojo/has",
   "require"
@@ -26,7 +25,6 @@ define([
   declare,
   lang,
   array,
-  Deferred,
   on,
   has,
   require
@@ -440,7 +438,7 @@ define([
     requestClusters: function() {
       var $this = this;
       
-      $this.refresh_deferred = new Deferred();
+      $this.requesting_clusters = true;
       
       if ($this.clusterIndexReady && $this.view) {
 
@@ -452,8 +450,6 @@ define([
         
         $this.worker.postMessage({bbox: [extent.xmin, extent.ymin, extent.xmax, extent.ymax], zoom: zoom});
       }
-      
-      return $this.refresh_deferred;
     },
     
     refreshClusters: function(stationary) {
@@ -470,10 +466,8 @@ define([
       
       if (!stationary) return;
       
-      // Only start refreshing the graphics if there isn't already a deferred promise.
-      if (!$this.refresh_deferred) $this.requestClusters().then(function(){
-        $this.refresh_deferred = false;
-      });
+      // Only start refreshing the graphics if a request for clusters is not already in progress
+      if (!$this.requesting_clusters) $this.requestClusters();
     },
     
     displayClusters: function(clusters) {
@@ -510,7 +504,7 @@ define([
           
           $this.applyEdits(editFeatures).then(function(edits){
             $this.addLabelGraphics();
-            if ($this.refresh_deferred) $this.refresh_deferred.resolve();
+            if ($this.requesting_clusters) $this.requesting_clusters = false;
           }, function(){
             addToSource();
           });
@@ -522,11 +516,12 @@ define([
       }
       
       function addToSource() {
-        // JSAPI versions < 4.9 or 4.9 with WebGL disabled do not support applyEdits on local graphics layers
+        // JSAPI versions < 4.9 or 4.9 with WebGL disabled do not support 
+        // queryFeatures/applyEdits on local graphics layers:
         $this.source.removeAll();
         $this.source.addMany($this.currentClusters);
         $this.addLabelGraphics();
-        if ($this.refresh_deferred) $this.refresh_deferred.resolve();
+        if ($this.requesting_clusters) $this.requesting_clusters = false;
       }
     },
     
