@@ -530,6 +530,7 @@ define([
       
       // Add any label graphics if enabled:
       if ($this.labelGraphics) { 
+        $this.labelGraphics.removeAll();
         $this.labelGraphics.addMany(array.map(
           array.filter($this.currentClusters, function (cluster) {
             return cluster.attributes.point_count > 0;
