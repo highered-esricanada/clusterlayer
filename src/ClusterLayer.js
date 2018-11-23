@@ -440,6 +440,8 @@ define([
     requestClusters: function() {
       var $this = this;
       
+      $this.refresh_deferred = new Deferred();
+      
       if ($this.clusterIndexReady && $this.view) {
 
         var zoom = parseInt(Math.round($this.view.zoom));
@@ -450,6 +452,8 @@ define([
         
         $this.worker.postMessage({bbox: [extent.xmin, extent.ymin, extent.xmax, extent.ymax], zoom: zoom});
       }
+      
+      return $this.refresh_deferred;
     },
     
     refreshClusters: function(stationary) {
@@ -467,53 +471,9 @@ define([
       if (!stationary) return;
       
       // Only start refreshing the graphics if there isn't already a deferred promise.
-      if (!$this.refresh_deferred) $this.clearClusters().then(function(){
+      if (!$this.refresh_deferred) $this.requestClusters().then(function(){
         $this.refresh_deferred = false;
       });
-    },
-    
-    clearClusters: function() {
-      
-      var $this = this;
-      
-      $this.refresh_deferred = new Deferred();
-      
-      if ($this.labelGraphics) {
-        $this.labelGraphics.removeAll();
-      }
-      
-      if (isWebGL && esriVersion >= 4.9) {
-        // As-of JSAPI 4.9, featurelayer-like object must have its graphics controlled
-        // via the applyEdits method, even if it is being drawn from client-side graphics:
-        $this.queryFeatures().then(function(result){
-          var delete_ids = array.map(result.features, function(f){
-            return {objectId: f.attributes.objectid};
-          });
-          
-          if (delete_ids.length > 0) $this.applyEdits({deleteFeatures: delete_ids}).then(function(){
-            $this.requestClusters();
-          })
-          else $this.requestClusters();
-          
-        }, function(){
-          clearFromSource();
-        });
-      } else {
-        clearFromSource();
-      }
-      
-      function clearFromSource() {
-        // JSAPI versions < 4.9 or 4.9 with WebGL disabled do not support applyEdits on local graphics layers
-        $this.source.removeAll();
-        
-        // Labels also won't work in < 4.9
-        if ($this.labelsVisible && $this.labelWithGraphics !== false)
-          $this.enableLabelGraphics();
-      
-        $this.requestClusters();
-      }
-      
-      return $this.refresh_deferred.promise;
     },
     
     displayClusters: function(clusters) {
@@ -537,9 +497,23 @@ define([
       });
       
       if (isWebGL && esriVersion >= 4.9) {
-        $this.applyEdits({addFeatures: $this.currentClusters}).then(function(edits){
-          $this.addLabelGraphics();
-          if ($this.refresh_deferred) $this.refresh_deferred.resolve();
+        // As-of JSAPI 4.9, featurelayer-like object must have its graphics controlled
+        // via the applyEdits method, even if it is being drawn from client-side graphics:
+        $this.queryFeatures().then(function(result){
+          var delete_ids = array.map(result.features, function(f){
+            return {objectId: f.attributes.objectid};
+          });
+          
+          var editFeatures = {};
+          if ($this.currentClusters.length > 0) editFeatures.addFeatures = $this.currentClusters;
+          if (delete_ids.length > 0) editFeatures.deleteFeatures = delete_ids;
+          
+          $this.applyEdits(editFeatures).then(function(edits){
+            $this.addLabelGraphics();
+            if ($this.refresh_deferred) $this.refresh_deferred.resolve();
+          }, function(){
+            addToSource();
+          });
         }, function(){
           addToSource();
         });
@@ -549,6 +523,7 @@ define([
       
       function addToSource() {
         // JSAPI versions < 4.9 or 4.9 with WebGL disabled do not support applyEdits on local graphics layers
+        $this.source.removeAll();
         $this.source.addMany($this.currentClusters);
         $this.addLabelGraphics();
         if ($this.refresh_deferred) $this.refresh_deferred.resolve();
