@@ -19,13 +19,13 @@
       var dojoConfig = {
         packages: [{
           name: 'lib',
-          location: location.pathname.replace(/\/[^/]+$/, '/') + '../../src'
+          location: location.pathname.replace(/\/[^/]+$/, '/') + '../dist'
         }]
       };
   </script>
 
-  <link rel="stylesheet" href="https://js.arcgis.com/4.10/esri/css/main.css">
-  <script src="https://js.arcgis.com/4.10/"></script>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.8/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.8/"></script>
 
   <script>
   
@@ -34,8 +34,9 @@
       "esri/views/MapView",
       "esri/widgets/Legend",
       "lib/ClusterLayer",
+      "dojo/request/xhr",
       "dojo/domReady!"
-    ], function(Map, MapView, Legend, ClusterLayer) {
+    ], function(Map, MapView, Legend, ClusterLayer, xhr) {
 
       var map = new Map({
         basemap: "topo"
@@ -49,24 +50,24 @@
         constraints: {rotationEnabled: false}
       });
       
-      var clusterlayer = new ClusterLayer({
-        source_url: location.pathname.replace(/\/[^/]+$/, '/') + "../sample1mil.json",
-        direct_url: true,
-        direct_type: "coords",
-        labelsVisible: true
-      });
+      xhr("sample10k.json", {handleAs: "json"}).then(function(featureSet){
+        var clusterlayer = new ClusterLayer({
+          source: featureSet.features,
+          labelWithGraphics: false
+        });
 
-      map.add(clusterlayer);
-      
-      var legend = new Legend({
-        view: view,
-        layerInfos: [{
-          layer: clusterlayer,
-          title: "Legend"
-        }]
-      });
+        map.add(clusterlayer);
+        
+        var legend = new Legend({
+          view: view,
+          layerInfos: [{
+            layer: clusterlayer,
+            title: "Legend"
+          }]
+        });
 
-      view.ui.add(legend, "bottom-right");
+        view.ui.add(legend, "bottom-right");
+      });
     });
     
   </script>

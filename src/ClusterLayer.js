@@ -30,7 +30,9 @@ define([
   require
 ){
   
-  var esriVersion = parseFloat(esriNS.version);
+  var esriVersion = esriNS.version.split(".");
+  var esriVersionMajor = parseInt(esriVersion[0]);
+  var esriVersionMinor = parseInt(esriVersion[1]);
   var isWebGL = has('esri-featurelayer-webgl')==1;
   
   var clusterRenderer = {
@@ -116,9 +118,7 @@ define([
   };
 
   var clusterLabelSymbol = {
-    type: "text",
     color: "black",
-    haloColor: "blue",
     haloSize: "40px",
     text: "",
     xoffset: 0,
@@ -234,7 +234,7 @@ define([
       // If no supercluster popup template is provided, use a default template...
       if (!$this.opts.popupTemplate) $this.opts.popupTemplate = clusterPopupTemplate;
       
-      if ($this.opts.labelsVisible && esriVersion >= 4.9 && !isWebGL) $this.opts.labelWithGraphics = true;
+      if ($this.opts.labelsVisible && (esriVersionMajor >= 4 && esriVersionMinor >=9) && !isWebGL) $this.opts.labelWithGraphics = true;
       if ($this.opts.labelWithGraphics) $this.opts.labelsVisible = false;
       
       
@@ -303,7 +303,7 @@ define([
       this.labelWithGraphics = true;
       this.labelGraphics = new GraphicsLayer({ graphics: [], popupTemplate: this.popupTemplate });
       this.view.map.add(this.labelGraphics);
-      if (isWebGL) this.labelGraphics.opacity = 0;
+      if (isWebGL || (esriVersionMajor >= 4 && esriVersionMinor >=10)) this.labelGraphics.opacity = 0;
     },
     
     watchView: function(mapView)
@@ -314,7 +314,7 @@ define([
       if (!mapView) return;
       $this.stationaryWatch = $this.view.watch("stationary", function(stationary){ $this.refreshClusters(stationary); });
       $this.scaleWatch = $this.view.watch("scale", function(){ 
-        if ($this.labelGraphics && isWebGL) $this.labelGraphics.opacity = 0;
+        if ($this.labelGraphics && (isWebGL || (esriVersionMajor >= 4 && esriVersionMinor >=10))) $this.labelGraphics.opacity = 0;
       });
     },
 
@@ -490,7 +490,7 @@ define([
         return cluster;
       });
       
-      if (isWebGL && esriVersion >= 4.9) {
+      if ((isWebGL && (esriVersionMajor >= 4 && esriVersionMinor >=9)) || (esriVersionMajor >= 4 && esriVersionMinor >=10)) {
         // As-of JSAPI 4.9, featurelayer-like object must have its graphics controlled
         // via the applyEdits method, even if it is being drawn from client-side graphics:
         $this.queryFeatures().then(function(result){
@@ -555,7 +555,7 @@ define([
         // a hack to prevent the visual appearance of labels being drawn slightly before
         // the symobols for the points they represent...instead, they (usually) will
         // appear slightly after, which is somewhat less distracting.
-        if (isWebGL) setTimeout(function(){
+        if (isWebGL || (esriVersionMajor >= 4 && esriVersionMinor >=10)) setTimeout(function(){
           $this.labelGraphics.opacity = 1;
         }, $this.has_loaded?300:500);
         
